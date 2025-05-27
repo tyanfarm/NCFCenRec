@@ -94,6 +94,7 @@ def train(model, train_raw_data, all_items, optimizer, criterion, val_data, test
     best_test_ndcg = 0
 
     for epoch in range(epochs):
+        logging.info(f"=== Processing epoch {epoch+1}/{epochs} ===")
         # Sample lại dữ liệu train mỗi epoch
         sampled_train = resample_train_data(train_raw_data, all_items, num_negatives=4)
         train_dataset = ImplicitDataset(sampled_train)
@@ -109,11 +110,11 @@ def train(model, train_raw_data, all_items, optimizer, criterion, val_data, test
             optimizer.step()
             total_loss += loss.item()
 
-        print(f"Epoch {epoch+1}, Loss: {total_loss:.4f}")
+        logging.info(f"Epoch {epoch+1}, Loss: {total_loss:.4f}")
         val_hit, val_ndcg = evaluate(model, val_data)
         test_hit, test_ndcg = evaluate(model, test_data)
-        print(f"Validation Hit@10: {val_hit:.4f}, NDCG@10: {val_ndcg:.4f}")
-        print(f"Test Hit@10: {test_hit:.4f}, NDCG@10: {test_ndcg:.4f}")
+        logging.info(f"Validation Hit@10: {val_hit:.4f}, NDCG@10: {val_ndcg:.4f}")
+        logging.info(f"Test Hit@10: {test_hit:.4f}, NDCG@10: {test_ndcg:.4f}")
         if val_hit > best_val_hist:
             best_val_hist = val_hit
             best_test_hist = test_hit

@@ -54,7 +54,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], weight_decay=c
 criterion = nn.BCELoss()
 
 all_items=set(df['itemId'].unique())
-best_hit, best_ndcg = train(model, train_data, all_items, optimizer, criterion, val_data, test_data, epochs=100, logging=logging)
+best_hit, best_ndcg = train(model, train_data, all_items, optimizer, criterion, val_data, test_data, epochs=100)
 
 logging.info(f"Best hit@10: {best_hit:.4f}, best ndcg@10: {best_ndcg:.4f}")
 
