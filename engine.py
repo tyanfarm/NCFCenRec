@@ -17,25 +17,53 @@ class ImplicitDataset(Dataset):
         u, i, label = self.data[idx]
         return torch.LongTensor([u]), torch.LongTensor([i]), torch.FloatTensor([label])
     
-class NCF_MLP(nn.Module):
+class NeuMF(nn.Module):
     def __init__(self, num_users, num_items, emb_dim=32):
         super().__init__()
-        self.user_emb = nn.Embedding(num_users, emb_dim)
-        self.item_emb = nn.Embedding(num_items, emb_dim)
 
+        # Embeddings for GMF
+        self.gmf_user_emb = nn.Embedding(num_users, emb_dim)
+        self.gmf_item_emb = nn.Embedding(num_items, emb_dim)
+
+        # Embeddings for MLP
+        self.mlp_user_emb = nn.Embedding(num_users, emb_dim)
+        self.mlp_item_emb = nn.Embedding(num_items, emb_dim)
+
+        # MLP layers
         self.mlp = nn.Sequential(
             nn.Linear(emb_dim * 2, 32),
             nn.ReLU(),
+            # nn.Linear(64, 32),
+            # nn.ReLU(),
             nn.Linear(32, 16),
             nn.ReLU(),
             nn.Linear(16, 8),
-            nn.ReLU(),
-            nn.Linear(8, 1),
-            nn.Sigmoid()  # đầu ra xác suất
+            nn.ReLU()
         )
 
-    def forward(self, u, i):
-        u_emb = self.user_emb(u).squeeze(1)  # (batch, emb_dim)
-        i_emb = self.item_emb(i).squeeze(1)  # (batch, emb_dim)
-        x = torch.cat([u_emb, i_emb], dim=1)  # (batch, 2 * emb_dim)
-        return self.mlp(x).squeeze(1)  # (batch,)
+        # Final prediction layer (combines GMF + MLP output)
+        self.output_layer = nn.Linear(emb_dim + 8, 1)
+        self.sigmoid = nn.Sigmoid()
+
+        # Initialize weights with Gaussian
+        for layer in self.modules():
+            if isinstance(layer, (nn.Embedding, nn.Linear)):
+                nn.init.normal_(layer.weight, mean=0.0, std=0.01)
+                if isinstance(layer, nn.Linear) and layer.bias is not None:
+                    nn.init.constant_(layer.bias, 0)
+
+    def forward(self, user, item):
+        # GMF path: element-wise product
+        gmf_u = self.gmf_user_emb(user).squeeze(1)
+        gmf_i = self.gmf_item_emb(item).squeeze(1)
+        gmf_out = gmf_u * gmf_i
+
+        # MLP path: concatenate then MLP
+        mlp_u = self.mlp_user_emb(user).squeeze(1)
+        mlp_i = self.mlp_item_emb(item).squeeze(1)
+        mlp_input = torch.cat([mlp_u, mlp_i], dim=1)
+        mlp_out = self.mlp(mlp_input)
+
+        # Concatenate GMF and MLP outputs and predict
+        x = torch.cat([gmf_out, mlp_out], dim=1)
+        return self.sigmoid(self.output_layer(x)).squeeze(1)

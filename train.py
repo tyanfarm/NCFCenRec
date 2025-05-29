@@ -4,9 +4,8 @@ import torch
 import torch.nn as nn
 import os  
 from utils import *
-from engine import ImplicitDataset, NCF_MLP
+from engine import ImplicitDataset, NeuMF
 import datetime
-
 
 # Training settings
 parser = argparse.ArgumentParser()
@@ -43,14 +42,17 @@ current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 logname = os.path.join(path, current_time+'.txt')
 initLogging(logname)
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logging.info(f"Using device: {device}")
+
 # Load dataset
 dataset_dir = "data/" + config['dataset'] + "/" + "ratings.dat"
 df = load_data(dataset_dir, config['dataset'])
 train_data, val_data, test_data, all_items, num_users = build_datasets(df)
 
 # Create model
-model = NCF_MLP(num_users, len(all_items), 32)
-optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'], weight_decay=config['l2_regularization'])
+model = NeuMF(num_users, len(all_items), 32)
+optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
 criterion = nn.BCELoss()
 
 all_items=set(df['itemId'].unique())
